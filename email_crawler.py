@@ -1,18 +1,6 @@
-import re
 from urllib.request import urlopen
-
-def find_all_emails_on_url(url):
-    page_html = str(urlopen(url).read())
-    return set(re.findall(pattern, page_html))
-
-
-domain = 'https://www.16personalities.com'
-initial_url = 'https://www.16personalities.com/de'
-pattern = r'[\w-]+@\w+\.[\w.]+'
-#print(find_all_emails_on_url(initial_url))
-
-
 from bs4 import BeautifulSoup
+import re
 
 def find_all_links_on_page(url):
     links=[]
@@ -24,21 +12,47 @@ def find_all_links_on_page(url):
             links.append(href)
     return links
 
-all_links=find_all_links_on_page(initial_url)
+class Crawler():
+    extractions=set()
+    re_pattern=""
+    def set_email_pattern(self):
+        self.re_pattern = r'[\w\.-]+@[\w\.-]+\.[\w\.]+'
+        #self.re_pattern = r"(^[a-zA-Z0-9_\.-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+    def search_for_extractions(self, str_url):
+        page_html = str(urlopen(str_url).read())
+        findings = re.findall(self.re_pattern, page_html)
+        self.extractions.update(findings)
+    def get_extractions(self):
+        return self.extractions
 
-step2=set()
-for link in all_links:
-    step2.update(find_all_links_on_page(link))
-print(step2)
-
-#step3=set(step2)
-#for link in step2:
-#    step3.update(find_all_links_on_page(link))
-#print(step3)
 
 
-emails=set()
-for link in step2:
-    emails.update(find_all_emails_on_url(link))
 
-print(emails)
+domain = 'https://www.tum.de'
+initial_url = 'https://www.tum.de'
+LIMIT_URLS=30
+
+crawled_urls=[]
+to_be_crawled_urls=[initial_url]
+email_crawler=Crawler()
+email_crawler.set_email_pattern()
+
+
+while to_be_crawled_urls:
+    current_url=to_be_crawled_urls.pop()
+    if len(to_be_crawled_urls) + len(crawled_urls) < LIMIT_URLS:
+        urls_on_page=find_all_links_on_page(current_url)
+        to_be_crawled_urls+=urls_on_page
+    else:
+        to_be_crawled_urls=to_be_crawled_urls[:LIMIT_URLS]
+    email_crawler.search_for_extractions(current_url)
+    crawled_urls.append(current_url)
+
+
+#[print(url) for url in crawled_urls]
+#print(email_crawler.get_extractions())
+#print()
+#print("emails found:")
+[print(email) for email in email_crawler.get_extractions()]
+
+
